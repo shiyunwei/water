@@ -1,0 +1,2036 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提案一：結合日常生活感測與 AI Agent 的遠距家庭共同目標系統</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      /* Soft Pastel Light Blue Palette */
+      --bg-base: #eff6fc;
+      --bg-gradient-1: #e4f1fb;
+      --bg-gradient-2: #f6fafe;
+      --surface: rgba(255, 255, 255, 0.86);
+      --surface-strong: rgba(255, 255, 255, 0.96);
+      --surface-tint: rgba(227, 241, 252, 0.68);
+      --border-soft: rgba(132, 184, 224, 0.34);
+      --border-medium: rgba(102, 165, 214, 0.45);
+
+      --blue-50: #f3f9fe;
+      --blue-100: #e2f0fb;
+      --blue-200: #c5e2f7;
+      --blue-300: #99ccf0;
+      --blue-400: #6cb2e4;
+      --blue-500: #4693cc;
+      --blue-600: #2f74aa;
+      --blue-700: #1f5380;
+
+      --text-primary: #1a3550;
+      --text-secondary: #4a6682;
+      --text-muted: #708ba6;
+
+      --accent-teal: #49a89d;
+      --accent-teal-bg: #e7f6f4;
+      --accent-indigo: #6384d1;
+      --accent-indigo-bg: #edf1fb;
+      --accent-warm: #d9826c;
+      --accent-warm-bg: #fdf1ed;
+
+      --shadow-card: 0 12px 32px -8px rgba(47, 116, 170, 0.1), 0 2px 6px rgba(47, 116, 170, 0.04);
+      --shadow-float: 0 16px 40px -10px rgba(31, 83, 128, 0.16);
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 11px;
+
+      --font-sans: 'Plus Jakarta Sans', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: linear-gradient(135deg, #dfeefb 0%, #eef6fc 48%, #e5f2fc 100%);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient background blobs */
+    .ambient-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(70px);
+      opacity: 0.65;
+      transition: transform 1.2s ease;
+    }
+
+    .blob-1 {
+      width: 52vw;
+      height: 52vw;
+      top: -18vw;
+      left: -10vw;
+      background: radial-gradient(circle, rgba(169, 214, 247, 0.65), rgba(215, 237, 253, 0));
+    }
+
+    .blob-2 {
+      width: 46vw;
+      height: 46vw;
+      bottom: -16vw;
+      right: -8vw;
+      background: radial-gradient(circle, rgba(145, 203, 243, 0.55), rgba(215, 237, 253, 0));
+    }
+
+    .blob-3 {
+      width: 34vw;
+      height: 34vw;
+      top: 35%;
+      right: 22%;
+      background: radial-gradient(circle, rgba(188, 228, 245, 0.45), rgba(255, 255, 255, 0));
+    }
+
+    /* Stage container */
+    .presentation-viewport {
+      position: relative;
+      z-index: 1;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 28px 68px;
+    }
+
+    .deck {
+      position: relative;
+      width: 100%;
+      max-width: 1220px;
+      height: 100%;
+      max-height: 700px;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(155deg, rgba(255, 255, 255, 0.84) 0%, rgba(242, 249, 255, 0.88) 100%);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.92);
+      box-shadow: var(--shadow-float), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      border-radius: 28px;
+      padding: 40px 52px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(14px) scale(0.985);
+      transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                  visibility 0.42s;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(102, 165, 214, 0.35) transparent;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+      z-index: 2;
+    }
+
+    .slide.exit-left {
+      opacity: 0;
+      transform: translateX(-24px) scale(0.985);
+    }
+
+    /* Header inside slides */
+    .slide-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--blue-600);
+      background: var(--blue-100);
+      border: 1px solid var(--border-soft);
+      padding: 5px 13px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .eyebrow-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blue-500);
+    }
+
+    .slide-title {
+      font-size: clamp(1.55rem, 2.5vw, 2.15rem);
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .slide-subtitle {
+      font-size: 0.98rem;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .slide-num-badge {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid var(--border-soft);
+      padding: 5px 12px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    /* Body content area */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    /* Footer inside slides */
+    .slide-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      margin-top: 12px;
+      border-top: 1px solid rgba(132, 184, 224, 0.22);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* Reusable Card & Grid Utilities */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 20px 22px;
+      box-shadow: var(--shadow-card);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px -10px rgba(47, 116, 170, 0.15);
+    }
+
+    .card-tint {
+      background: linear-gradient(160deg, rgba(226, 240, 251, 0.78), rgba(244, 250, 255, 0.9));
+      border: 1px solid var(--border-medium);
+    }
+
+    .icon-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--blue-100);
+      color: var(--blue-600);
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .icon-badge.teal {
+      background: var(--accent-teal-bg);
+      color: var(--accent-teal);
+    }
+
+    .icon-badge.indigo {
+      background: var(--accent-indigo-bg);
+      color: var(--accent-indigo);
+    }
+
+    .icon-badge.warm {
+      background: var(--accent-warm-bg);
+      color: var(--accent-warm);
+    }
+
+    .card h3 {
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .card p, .card li {
+      font-size: 0.91rem;
+      line-height: 1.62;
+      color: var(--text-secondary);
+    }
+
+    .clean-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .clean-list li {
+      position: relative;
+      padding-left: 18px;
+    }
+
+    .clean-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.58em;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blue-400);
+    }
+
+    .clean-list.teal li::before { background: var(--accent-teal); }
+    .clean-list.warm li::before { background: var(--accent-warm); }
+
+    /* Cover Slide Specific */
+    .cover-layout {
+      display: grid;
+      grid-template-columns: 1.28fr 0.92fr;
+      gap: 36px;
+      align-items: center;
+      height: 100%;
+    }
+
+    .cover-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #dff0fc, #eaf5fd);
+      border: 1px solid var(--border-medium);
+      color: var(--blue-600);
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .cover-title {
+      font-size: clamp(2rem, 3.3vw, 2.75rem);
+      font-weight: 700;
+      line-height: 1.26;
+      color: var(--text-primary);
+      margin-bottom: 18px;
+      letter-spacing: -0.015em;
+    }
+
+    .cover-title span {
+      color: var(--blue-600);
+      background: linear-gradient(120deg, rgba(153, 204, 240, 0.35), rgba(197, 226, 247, 0.15));
+      padding: 0 6px;
+      border-radius: 8px;
+    }
+
+    .cover-desc {
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      margin-bottom: 26px;
+      max-width: 560px;
+    }
+
+    .cover-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid var(--border-soft);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      box-shadow: 0 4px 14px rgba(70, 147, 204, 0.08);
+    }
+
+    .cover-visual {
+      background: linear-gradient(160deg, rgba(220, 239, 253, 0.72), rgba(247, 251, 255, 0.92));
+      border: 1px solid rgba(153, 204, 240, 0.45);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-card);
+      position: relative;
+    }
+
+    /* Core Concept Flow */
+    .concept-hero {
+      background: linear-gradient(135deg, #e3f1fc 0%, #f4fafe 100%);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      padding: 18px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .concept-hero p {
+      font-size: 1.02rem;
+      line-height: 1.65;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .flow-arrow-row {
+      display: grid;
+      grid-template-columns: 1fr 32px 1fr 32px 1fr;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .flow-chevron {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue-400);
+    }
+
+    /* Data Sources Timeline */
+    .phase-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .phase-now {
+      background: var(--blue-500);
+      color: #fff;
+    }
+
+    .phase-next {
+      background: var(--blue-100);
+      color: var(--blue-700);
+      border: 1px solid var(--border-medium);
+    }
+
+    .scenario-box {
+      margin-top: 16px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px dashed var(--blue-300);
+      border-radius: var(--radius-md);
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* Interactive Demo Slide 4 */
+    .demo-layout {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .member-row {
+      background: rgba(244, 250, 255, 0.9);
+      border: 1px solid var(--border-soft);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .member-row-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 11px;
+      border-radius: 999px;
+      background: #ddecf8;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+
+    .fill-a { background: linear-gradient(90deg, #6bb5e8, #4491cc); }
+    .fill-b { background: linear-gradient(90deg, #64c4b8, #409e93); }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--blue-500);
+      cursor: pointer;
+    }
+
+    .shared-gauge-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: linear-gradient(160deg, rgba(232, 244, 254, 0.85), rgba(255, 255, 255, 0.95));
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+    }
+
+    .plant-screen-frame {
+      width: 100%;
+      max-width: 310px;
+      background: linear-gradient(180deg, #f7fbff 0%, #e6f3fc 100%);
+      border: 4px solid #ffffff;
+      outline: 1.5px solid rgba(102, 165, 214, 0.45);
+      border-radius: 20px;
+      padding: 12px 16px 10px;
+      margin: 8px 0 10px;
+      box-shadow: 0 10px 24px -6px rgba(47, 116, 170, 0.16);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .plant-svg-box {
+      width: 124px;
+      height: 124px;
+      flex-shrink: 0;
+    }
+
+    .plant-stage {
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      transform-origin: 70px 105px;
+    }
+
+    .screen-metrics {
+      flex: 1;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .screen-chip {
+      display: inline-block;
+      align-self: flex-start;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--blue-600);
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--border-soft);
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 2px;
+    }
+
+    .ring-pct {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--blue-700);
+    }
+
+    .ring-label {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .screen-mini-bar {
+      width: 100%;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(181, 214, 240, 0.55);
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .screen-mini-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #5da7dc, #49a89d);
+      transition: width 0.35s ease;
+    }
+
+    .led-preview {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid var(--border-soft);
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .led-orb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transition: background 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .btn-reset {
+      margin-top: 10px;
+      border: 1px solid var(--border-medium);
+      background: #ffffff;
+      color: var(--blue-600);
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-reset:hover {
+      background: var(--blue-100);
+    }
+
+    /* Hardware Architecture Slide 7 */
+    .arch-pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      position: relative;
+      margin-bottom: 18px;
+    }
+
+    .arch-step {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 18px 16px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .step-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--blue-500);
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .table-clean {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border-soft);
+      font-size: 0.88rem;
+    }
+
+    .table-clean th {
+      background: var(--blue-100);
+      color: var(--blue-700);
+      text-align: left;
+      padding: 9px 16px;
+      font-weight: 600;
+    }
+
+    .table-clean td {
+      padding: 9px 16px;
+      border-top: 1px solid rgba(132, 184, 224, 0.2);
+      color: var(--text-secondary);
+    }
+
+    .table-clean td:first-child {
+      font-weight: 600;
+      color: var(--text-primary);
+      width: 34%;
+    }
+
+    /* Signal Diagram Slide 8 */
+    .signal-box {
+      background: var(--surface-strong);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 14px 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-card);
+    }
+
+    /* Related Work Slide 9 */
+    .paper-card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .paper-year {
+      display: inline-block;
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--blue-100);
+      color: var(--blue-700);
+      margin-bottom: 10px;
+    }
+
+    .paper-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.42;
+      margin-bottom: 12px;
+    }
+
+    .insight-tag {
+      margin-top: 12px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: var(--blue-50);
+      border-left: 3.5px solid var(--blue-500);
+      font-size: 0.87rem;
+      color: var(--text-primary);
+      line-height: 1.55;
+    }
+
+    .insight-tag.warn {
+      background: var(--accent-warm-bg);
+      border-left-color: var(--accent-warm);
+    }
+
+    /* Floating Bottom Navigation */
+    .nav-bar {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(153, 204, 240, 0.45);
+      box-shadow: 0 10px 30px rgba(31, 83, 128, 0.14);
+      padding: 7px 14px;
+      border-radius: 999px;
+    }
+
+    .nav-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: var(--blue-100);
+      color: var(--blue-700);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .nav-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 6px;
+    }
+
+    .nav-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #c5dff3;
+      border: none;
+      cursor: pointer;
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+
+    .nav-dot.active {
+      width: 22px;
+      background: var(--blue-500);
+    }
+
+    .nav-counter {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 44px;
+      text-align: center;
+    }
+
+    .nav-divider {
+      width: 1px;
+      height: 18px;
+      background: rgba(132, 184, 224, 0.35);
+    }
+
+    /* Overview Grid Modal */
+    .overview-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(226, 240, 251, 0.88);
+      backdrop-filter: blur(18px);
+      display: none;
+      flex-direction: column;
+      padding: 32px 44px;
+      overflow-y: auto;
+    }
+
+    .overview-modal.open {
+      display: flex;
+    }
+
+    .overview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1180px;
+      width: 100%;
+      margin: 0 auto 24px;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 18px;
+      max-width: 1180px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .overview-item {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1.5px solid var(--border-soft);
+      border-radius: 16px;
+      padding: 18px;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      text-align: left;
+    }
+
+    .overview-item:hover {
+      transform: translateY(-3px);
+      border-color: var(--blue-400);
+      box-shadow: var(--shadow-card);
+    }
+
+    .overview-item.current {
+      border-color: var(--blue-500);
+      background: #f0f8ff;
+    }
+
+    .overview-item-num {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--blue-500);
+      margin-bottom: 6px;
+    }
+
+    .overview-item-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 960px) {
+      .presentation-viewport {
+        padding: 12px 12px 64px;
+      }
+      .slide {
+        padding: 24px 24px 20px;
+        overflow-y: auto;
+      }
+      .cover-layout,
+      .demo-layout,
+      .grid-2,
+      .grid-3,
+      .grid-4,
+      .arch-pipeline,
+      .flow-arrow-row {
+        grid-template-columns: 1fr;
+      }
+      .flow-chevron {
+        transform: rotate(90deg);
+        height: 20px;
+      }
+    }
+
+    /* Print / PDF Export */
+    @media print {
+      html, body {
+        overflow: visible;
+        height: auto;
+        background: #ffffff;
+      }
+      .ambient-bg, .nav-bar, .overview-modal, .btn-reset, .slider-row {
+        display: none !important;
+      }
+      .presentation-viewport {
+        padding: 0;
+        display: block;
+        height: auto;
+        width: auto;
+      }
+      .deck {
+        max-width: none;
+        max-height: none;
+        height: auto;
+      }
+      .slide {
+        position: relative;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        page-break-after: always;
+        break-after: page;
+        height: 185mm;
+        margin-bottom: 10mm;
+        box-shadow: none;
+        border: 1px solid #d2e6f5;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-bg" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <main class="presentation-viewport">
+    <div class="deck" id="deck">
+
+      <!-- SLIDE 1: 封面 -->
+      <section class="slide active" data-title="封面：遠距家庭共同目標系統">
+        <div class="slide-body">
+          <div class="cover-layout">
+            <div>
+              <div class="cover-tag">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                畢業專題提案一
+              </div>
+              <h1 class="cover-title">
+                結合日常生活感測與 <span>AI Agent</span> 的<br />
+                遠距家庭共同目標系統
+              </h1>
+              <p class="cover-desc">
+                透過智慧水杯感測日常飲水行為，將分居兩地家人的個人目標整合成共同目標，結合 AI 個人化建議與桌面螢幕小盆栽（花朵隨進度綻放並顯示達成率），讓健康習慣與家庭連結自然融入每一天。
+              </p>
+              <div class="cover-pills">
+                <span class="pill">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4693cc" stroke-width="2.2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                  日常感測 (IoT)
+                </span>
+                <span class="pill">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4693cc" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  遠距共同目標
+                </span>
+                <span class="pill">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4693cc" stroke-width="2.2"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z"/></svg>
+                  AI Agent 引導
+                </span>
+              </div>
+            </div>
+
+            <div class="cover-visual" aria-hidden="true">
+              <svg viewBox="0 0 360 310" width="100%" style="max-width:340px;">
+                <defs>
+                  <linearGradient id="cupGradA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#9ad0f5"/>
+                    <stop offset="100%" stop-color="#5ca8df"/>
+                  </linearGradient>
+                  <linearGradient id="cupGradB" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#96dfd6"/>
+                    <stop offset="100%" stop-color="#4fb2a6"/>
+                  </linearGradient>
+                  <radialGradient id="cloudGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+                    <stop offset="100%" stop-color="#d7ecfc" stop-opacity="0.7"/>
+                  </radialGradient>
+                </defs>
+
+                <!-- Connection Arcs -->
+                <path d="M90 190 Q180 70 270 190" fill="none" stroke="#7cbce9" stroke-width="2.5" stroke-dasharray="6 6"/>
+                <circle cx="180" cy="112" r="40" fill="url(#cloudGlow)" stroke="#88c4ee" stroke-width="2"/>
+                <!-- Heart / AI Spark in center -->
+                <path d="M180 128 C180 128 162 117 162 106 C162 100 167 96 172 96 C176 96 179 98.5 180 101 C181 98.5 184 96 188 96 C193 96 198 100 198 106 C198 117 180 128 180 128 Z" fill="#5da7dc" opacity="0.88"/>
+                <text x="180" y="168" text-anchor="middle" font-size="12" font-weight="600" fill="#2f74aa">共同目標雲端整合 &amp; AI Agent</text>
+
+                <!-- Home A -->
+                <g transform="translate(36, 175)">
+                  <rect x="0" y="18" width="108" height="92" rx="16" fill="#ffffff" stroke="#b9ddf5" stroke-width="2"/>
+                  <path d="M-4 24 L54 -14 L112 24" fill="none" stroke="#5da7dc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- Smart Cup A -->
+                  <rect x="16" y="42" width="32" height="42" rx="6" fill="#eef7fe" stroke="#6db3e5" stroke-width="2"/>
+                  <rect x="18" y="58" width="28" height="24" rx="4" fill="url(#cupGradA)"/>
+                  <!-- Mini Potted Plant Screen A -->
+                  <rect x="57" y="42" width="36" height="42" rx="7" fill="#f3f9fe" stroke="#8ec4ec" stroke-width="1.8"/>
+                  <polygon points="68,72 82,72 80,80 70,80" fill="#8bb9db"/>
+                  <path d="M75 72 L75 56" stroke="#49a89d" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="75" cy="54" r="4.5" fill="#78bdf0"/>
+                  <circle cx="70" cy="61" r="2.8" fill="#5fb9ad"/>
+                  <circle cx="80" cy="62" r="2.8" fill="#5fb9ad"/>
+                  <text x="54" y="102" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1f5380">父母端</text>
+                </g>
+
+                <!-- Home B -->
+                <g transform="translate(216, 175)">
+                  <rect x="0" y="18" width="108" height="92" rx="16" fill="#ffffff" stroke="#b5e3de" stroke-width="2"/>
+                  <path d="M-4 24 L54 -14 L112 24" fill="none" stroke="#49a89d" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- Smart Cup B -->
+                  <rect x="16" y="42" width="32" height="42" rx="6" fill="#effaf8" stroke="#62bfb3" stroke-width="2"/>
+                  <rect x="18" y="54" width="28" height="28" rx="4" fill="url(#cupGradB)"/>
+                  <!-- Mini Potted Plant Screen B -->
+                  <rect x="57" y="42" width="36" height="42" rx="7" fill="#f2fbfa" stroke="#7fd0c6" stroke-width="1.8"/>
+                  <polygon points="68,72 82,72 80,80 70,80" fill="#7fc2ba"/>
+                  <path d="M75 72 L75 56" stroke="#49a89d" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="75" cy="54" r="4.5" fill="#78bdf0"/>
+                  <circle cx="70" cy="61" r="2.8" fill="#5fb9ad"/>
+                  <circle cx="80" cy="62" r="2.8" fill="#5fb9ad"/>
+                  <text x="54" y="102" text-anchor="middle" font-size="11.5" font-weight="600" fill="#2c7b72">子女端</text>
+                </g>
+              </svg>
+              <div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px; text-align:center;">
+                透過日常小事，讓遠距家人共享同一份生活節奏
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-footer">
+          <span>提案一：結合日常生活感測與 AI Agent 的遠距家庭共同目標系統</span>
+          <span>按 → 或空白鍵開始簡報</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: 核心概念 -->
+      <section class="slide" data-title="核心概念與設計動機">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>01 CORE CONCEPT</div>
+            <h2 class="slide-title">核心概念：讓日常數據成為遠距家人的橋樑</h2>
+          </div>
+          <span class="slide-num-badge">02 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="concept-hero">
+            <div class="icon-badge" style="margin-bottom:0; width:50px; height:50px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <p>
+              透過感測器蒐集遠距家庭成員的日常生活數據，不僅讓每個人了解自己的生活習慣，更將雙方的個人目標整合成一個<strong>「共同目標」</strong>，使分開居住的家人能透過日常活動產生共同參與感。
+            </p>
+          </div>
+
+          <div class="flow-arrow-row">
+            <div class="card">
+              <div class="icon-badge">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+              </div>
+              <h3>1. 各自日常感測</h3>
+              <p>父母與子女在各自家中透過低干擾感測裝置（如智慧水杯），自動記錄日常健康行為，無需繁瑣手動打卡。</p>
+            </div>
+
+            <div class="flow-chevron">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+
+            <div class="card card-tint">
+              <div class="icon-badge indigo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+              </div>
+              <h3>2. 整合共同目標</h3>
+              <p>將兩人的個人目標進度加以換算與結合，轉化為屬於兩人的「家庭共同進度」，強調彼此協作而非單向監督。</p>
+            </div>
+
+            <div class="flow-chevron">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+
+            <div class="card">
+              <div class="icon-badge teal">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <h3>3. 產生共同參與感</h3>
+              <p>透過桌面螢幕的小盆栽成長開花、達成百分比與柔和燈光回饋，讓遠距家人感覺「我們正一起灌溉同一個目標」，自然開啟日常關心。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>核心概念</span>
+          <span>從「各自紀錄」走向「共同參與」</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: 使用什麼資料 -->
+      <section class="slide" data-title="資料來源與擴充規劃">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>02 DATA SOURCES</div>
+            <h2 class="slide-title">使用什麼資料？從飲水起步的日常數據規劃</h2>
+          </div>
+          <span class="slide-num-badge">03 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="grid-2">
+            <div class="card card-tint">
+              <span class="phase-badge phase-now">第一階段｜初步主要資料來源</span>
+              <div style="display:flex; align-items:center; gap:14px; margin-bottom:10px;">
+                <div class="icon-badge" style="margin-bottom:0;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                </div>
+                <h3 style="margin-bottom:0; font-size:1.25rem;">每日飲水量 (Hydration)</h3>
+              </div>
+              <ul class="clean-list">
+                <li><strong>高頻且低侵入性：</strong>喝水是每天自然發生多次的日常行為，容易透過桌面感測器長期蒐集。</li>
+                <li><strong>目標彈性個人化：</strong>父母與子女依自身體重、作息與需求，各自設定適合自己的每日飲水目標。</li>
+                <li><strong>即時累積感明顯：</strong>每次飲水都能微幅推進當日進度，適合作為即時回饋與共同累積的媒介。</li>
+              </ul>
+            </div>
+
+            <div class="card">
+              <span class="phase-badge phase-next">第二階段｜未來擴充方向</span>
+              <div style="display:flex; align-items:center; gap:14px; margin-bottom:10px;">
+                <div class="icon-badge indigo" style="margin-bottom:0;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <h3 style="margin-bottom:0; font-size:1.25rem;">多元日常生活數據</h3>
+              </div>
+              <ul class="clean-list">
+                <li><strong>活動量 (Physical Activity)：</strong>納入每日步數或居家活動頻率，捕捉更完整的健康節奏。</li>
+                <li><strong>久坐時間 (Sedentary Time)：</strong>偵測長時間靜止狀態，與飲水提醒結合（例如久坐起身倒水）。</li>
+                <li><strong>跨維度健康畫像：</strong>讓 AI Agent 綜合多項生活習慣，提供更貼近真實作息的關懷建議。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="scenario-box">
+            <div class="icon-badge teal" style="margin-bottom:0; width:40px; height:40px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div style="font-size:0.93rem; color:var(--text-secondary); line-height:1.55;">
+              <strong style="color:var(--text-primary);">應用情境舉例：</strong>
+              父母與子女不需設定相同的喝水公升數，而是各自設定適合自己的每日目標（例如長輩 1,500 ml、子女 1,800 ml），系統同步記錄雙方每日飲水進度並換算成共同進展。
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>資料來源</span>
+          <span>以「飲水」作為低門檻切入點，逐步擴展生活感測</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: 如何運算與共同目標範例 (含互動展示) -->
+      <section class="slide" data-title="運算邏輯與共同目標範例">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>03 COMPUTATION &amp; EXAMPLE</div>
+            <h2 class="slide-title">如何運算？個人完成率與共同目標整合範例</h2>
+          </div>
+          <span class="slide-num-badge">04 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="demo-layout">
+            <!-- Left: Individual computation -->
+            <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+              <div>
+                <h3 style="margin-bottom:10px;">個人完成率運算（可拖曳滑桿模擬）</h3>
+                <p style="font-size:0.86rem; margin-bottom:12px;">
+                  先計算各自相對於個人目標的完成比例，使不同目標基準的家人能公平地共同參與：
+                </p>
+
+                <!-- Member A -->
+                <div class="member-row">
+                  <div class="member-row-head">
+                    <span>成員 A（目標 1,500 ml）</span>
+                    <span id="a-stats" style="color:var(--blue-600);">900 ml · 60.0%</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill fill-a" id="a-bar" style="width: 60%;"></div>
+                  </div>
+                  <div class="slider-row">
+                    <span>0 ml</span>
+                    <input type="range" id="slider-a" min="0" max="1800" step="50" value="900" aria-label="調整成員 A 飲水量" />
+                    <span>1800 ml</span>
+                  </div>
+                </div>
+
+                <!-- Member B -->
+                <div class="member-row" style="margin-bottom:0;">
+                  <div class="member-row-head">
+                    <span>成員 B（目標 1,800 ml）</span>
+                    <span id="b-stats" style="color:var(--accent-teal);">1,200 ml · 66.7%</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill fill-b" id="b-bar" style="width: 66.7%;"></div>
+                  </div>
+                  <div class="slider-row">
+                    <span>0 ml</span>
+                    <input type="range" id="slider-b" min="0" max="2000" step="50" value="1200" aria-label="調整成員 B 飲水量" />
+                    <span>2000 ml</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="font-size:0.8rem; color:var(--text-muted); margin-top:10px;">
+                公式：個人完成率 = min(當日飲水量 / 個人目標, 100%)
+              </div>
+            </div>
+
+            <!-- Right: Shared goal integration (Potted Plant Screen + Percentage) -->
+            <div class="shared-gauge-card">
+              <div style="font-size:0.9rem; font-weight:700; color:var(--blue-700);">共同目標整合進度 · 裝置螢幕預覽</div>
+
+              <div class="plant-screen-frame" aria-label="共同目標小盆栽與百分比螢幕預覽">
+                <svg class="plant-svg-box" viewBox="0 0 140 140">
+                  <defs>
+                    <linearGradient id="potGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#8ec4ec"/>
+                      <stop offset="100%" stop-color="#5d9fd1"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- Soft sky halo -->
+                  <circle cx="70" cy="64" r="52" fill="#e1f0fc" opacity="0.7"/>
+
+                  <!-- Stage 1+: Base sprout & main stem -->
+                  <g id="plant-stem" class="plant-stage">
+                    <path d="M70 98 Q70 76 70 54" fill="none" stroke="#429c8f" stroke-width="3.6" stroke-linecap="round"/>
+                    <path d="M70 86 Q55 78 48 82 Q55 92 70 88 Z" fill="#59b9ac"/>
+                    <path d="M70 80 Q85 72 92 76 Q85 86 70 82 Z" fill="#6ac7ba"/>
+                  </g>
+
+                  <!-- Stage 2+: Fuller side branches & leaves (25%+) -->
+                  <g id="plant-leaves-mid" class="plant-stage">
+                    <path d="M70 74 Q56 64 52 46" fill="none" stroke="#429c8f" stroke-width="2.6" stroke-linecap="round"/>
+                    <path d="M70 70 Q84 60 90 44" fill="none" stroke="#429c8f" stroke-width="2.6" stroke-linecap="round"/>
+                    <path d="M58 64 Q40 56 36 62 Q43 72 58 67 Z" fill="#49a89d"/>
+                    <path d="M82 60 Q100 52 104 58 Q97 68 82 63 Z" fill="#59b9ac"/>
+                  </g>
+
+                  <!-- Stage 3+: Lush upper foliage & first blossoms (50%+) -->
+                  <g id="plant-flowers-mid" class="plant-stage">
+                    <path d="M70 58 Q58 46 54 34" fill="none" stroke="#429c8f" stroke-width="2.2" stroke-linecap="round"/>
+                    <path d="M70 56 Q82 44 86 32" fill="none" stroke="#429c8f" stroke-width="2.2" stroke-linecap="round"/>
+                    <!-- Center Blossom -->
+                    <g transform="translate(70, 44)">
+                      <circle cx="0" cy="-7" r="5.5" fill="#77bef0"/>
+                      <circle cx="7" cy="-2" r="5.5" fill="#8dc9f4"/>
+                      <circle cx="4.5" cy="6" r="5.5" fill="#77bef0"/>
+                      <circle cx="-4.5" cy="6" r="5.5" fill="#8dc9f4"/>
+                      <circle cx="-7" cy="-2" r="5.5" fill="#77bef0"/>
+                      <circle cx="0" cy="0" r="4.2" fill="#fde293"/>
+                    </g>
+                    <!-- Left Bud/Blossom -->
+                    <g transform="translate(51, 44)">
+                      <circle cx="0" cy="-4.5" r="4" fill="#9fd6f8"/>
+                      <circle cx="4.5" cy="1" r="4" fill="#7ec2f2"/>
+                      <circle cx="-4.5" cy="1" r="4" fill="#7ec2f2"/>
+                      <circle cx="0" cy="4.5" r="4" fill="#9fd6f8"/>
+                      <circle cx="0" cy="0.5" r="3" fill="#fde293"/>
+                    </g>
+                  </g>
+
+                  <!-- Stage 4+: Rich blooming flowers (80%+) -->
+                  <g id="plant-flowers-full" class="plant-stage">
+                    <g transform="translate(90, 42)">
+                      <circle cx="0" cy="-4.5" r="4.2" fill="#8bc9f5"/>
+                      <circle cx="4.5" cy="1" r="4.2" fill="#a8d9fa"/>
+                      <circle cx="-4.5" cy="1" r="4.2" fill="#76bdf0"/>
+                      <circle cx="0" cy="4.5" r="4.2" fill="#8bc9f5"/>
+                      <circle cx="0" cy="0.5" r="3.1" fill="#fde293"/>
+                    </g>
+                    <g transform="translate(55, 29)">
+                      <circle cx="0" cy="-3.5" r="3.4" fill="#f7b6a7"/>
+                      <circle cx="3.5" cy="1" r="3.4" fill="#fad0c5"/>
+                      <circle cx="-3.5" cy="1" r="3.4" fill="#f7b6a7"/>
+                      <circle cx="0" cy="3.8" r="3.4" fill="#fad0c5"/>
+                      <circle cx="0" cy="0.5" r="2.4" fill="#fff3c4"/>
+                    </g>
+                    <g transform="translate(86, 28)">
+                      <circle cx="0" cy="-3.5" r="3.4" fill="#9bd5f8"/>
+                      <circle cx="3.5" cy="1" r="3.4" fill="#77bef0"/>
+                      <circle cx="-3.5" cy="1" r="3.4" fill="#9bd5f8"/>
+                      <circle cx="0" cy="3.8" r="3.4" fill="#77bef0"/>
+                      <circle cx="0" cy="0.5" r="2.4" fill="#fde293"/>
+                    </g>
+                  </g>
+
+                  <!-- Stage 5: Full goal sparkles (95%+) -->
+                  <g id="plant-sparkles" class="plant-stage">
+                    <path d="M35 32 L37 37 L42 39 L37 41 L35 46 L33 41 L28 39 L33 37 Z" fill="#6cb2e4"/>
+                    <path d="M106 24 L107.5 28 L111.5 29.5 L107.5 31 L106 35 L104.5 31 L100.5 29.5 L104.5 28 Z" fill="#49a89d"/>
+                    <circle cx="70" cy="21" r="2.5" fill="#fde293"/>
+                  </g>
+
+                  <!-- Pot -->
+                  <ellipse cx="70" cy="99" rx="22" ry="4.5" fill="#467aa3" opacity="0.25"/>
+                  <rect x="44" y="95" width="52" height="8" rx="4" fill="#73b1df"/>
+                  <polygon points="48,103 92,103 86,128 54,128" fill="url(#potGrad)"/>
+                  <path d="M65 113 C65 113 61 110 61 107.5 C61 106 62.5 105 63.8 105 C64.5 105 65 105.7 65 106.3 C65 105.7 65.5 105 66.2 105 C67.5 105 69 106 69 107.5 C69 110 65 113 65 113 Z" fill="#ffffff" opacity="0.8" transform="translate(5, 2)"/>
+                </svg>
+
+                <div class="screen-metrics">
+                  <span class="screen-chip">共同花園進度</span>
+                  <div class="ring-pct" id="shared-pct">63.3%</div>
+                  <div class="ring-label" id="shared-ml">合計 2,100 / 3,300 ml</div>
+                  <div class="screen-mini-bar">
+                    <div class="screen-mini-fill" id="screen-mini-fill" style="width: 63.3%;"></div>
+                  </div>
+                  <div id="plant-stage-name" style="font-size:0.75rem; font-weight:600; color:var(--accent-teal); margin-top:3px;">
+                    狀態：含苞初綻（花朵成長中）
+                  </div>
+                </div>
+              </div>
+
+              <div class="led-preview">
+                <span class="led-orb" id="led-orb" style="background:#56a8e0; box-shadow:0 0 12px #56a8e0;"></span>
+                <span id="led-status">螢幕同步顯示小盆栽成長＋達成率（可輔以柔和 LED）</span>
+              </div>
+
+              <p style="font-size:0.83rem; color:var(--text-secondary); margin-top:8px; line-height:1.48;">
+                當 A 喝了 900 ml (60%)、B 喝了 1,200 ml (66.7%)，共同進度為 <strong>63.3%</strong>；越接近 100%，螢幕上的花朵越茂盛，同時保留清晰的百分比數字。
+              </p>
+
+              <button class="btn-reset" id="reset-demo" type="button">重設為提案範例值 (900 / 1200 ml)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>運算邏輯</span>
+          <span>平均完成率整合確保不同目標基準的公平協作</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: AI Agent 應用 -->
+      <section class="slide" data-title="AI Agent 智慧分析與引導">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>04 AI AGENT APPLICATION</div>
+            <h2 class="slide-title">如何應用 AI Agent？從個人習慣到共同目標調節</h2>
+          </div>
+          <span class="slide-num-badge">05 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="grid-3">
+            <div class="card">
+              <div class="icon-badge">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+              </div>
+              <h3>個人分析與習慣洞察</h3>
+              <ul class="clean-list">
+                <li>計算每日目標完成率與長期趨勢變化。</li>
+                <li>分析個人飲水時段分佈（如早晨規律、午後容易忘記補水）。</li>
+                <li>辨識異常變化，提供貼近個人節奏的飲水觀察。</li>
+              </ul>
+            </div>
+
+            <div class="card card-tint">
+              <div class="icon-badge indigo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z"/></svg>
+              </div>
+              <h3>個人化適時提醒</h3>
+              <ul class="clean-list">
+                <li>結合歷史資料與當日進度，避免固定時間的機械式干擾。</li>
+                <li>在容易忽略補水的時段給予溫和、具鼓勵性的提醒。</li>
+                <li>視情況結合家人動態：「目前共同進度已達 63%，再補一杯就更接近目標囉！」</li>
+              </ul>
+            </div>
+
+            <div class="card">
+              <div class="icon-badge teal">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+              </div>
+              <h3>共同目標動態建議</h3>
+              <ul class="clean-list teal">
+                <li>持續追蹤雙人共同目標的實際執行情況與落差。</li>
+                <li>若目標過高導致長期未達標，適時建議微幅下修以維持成就感。</li>
+                <li>若雙方穩定達標，則建議漸進式調整，保持挑戰樂趣。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>AI Agent 應用</span>
+          <span>不僅是數據記錄器，更是理解作息與調節難度的協作夥伴</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 6: 個人與家庭價值 -->
+      <section class="slide" data-title="對個人及家庭的雙重價值">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>05 VALUE PROPOSITION</div>
+            <h2 class="slide-title">對個人及家庭有什麼價值？</h2>
+          </div>
+          <span class="slide-num-badge">06 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="grid-2" style="gap:24px;">
+            <div class="card" style="padding:26px 28px;">
+              <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+                <div class="icon-badge" style="margin-bottom:0; width:48px; height:48px;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                  <div style="font-size:0.78rem; font-weight:700; color:var(--blue-500);">INDIVIDUAL VALUE</div>
+                  <h3 style="font-size:1.3rem; margin-bottom:0;">對個人的價值</h3>
+                </div>
+              </div>
+              <ul class="clean-list" style="gap:12px;">
+                <li><strong>提升自我生活習慣覺察：</strong>將平時容易忽略的飲水行為具體量化，清楚看見自己的每日節奏。</li>
+                <li><strong>溫和改善健康行為：</strong>透過 AI Agent 的個人化分析與適時提醒，逐步建立穩定的補水與健康作息。</li>
+                <li><strong>零負擔的自我追蹤：</strong>不需每天手動輸入，讓健康管理自然融入日常工作與居家生活。</li>
+              </ul>
+            </div>
+
+            <div class="card card-tint" style="padding:26px 28px;">
+              <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+                <div class="icon-badge teal" style="margin-bottom:0; width:48px; height:48px;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </div>
+                <div>
+                  <div style="font-size:0.78rem; font-weight:700; color:var(--accent-teal);">FAMILY VALUE</div>
+                  <h3 style="font-size:1.3rem; margin-bottom:0;">對家庭的價值</h3>
+                </div>
+              </div>
+              <ul class="clean-list teal" style="gap:12px;">
+                <li><strong>從「各自追蹤」到「共同目標」：</strong>讓遠距居住的家人擁有共享的小目標，而不只是各自管理自己的數字。</li>
+                <li><strong>互相參與與彼此關心：</strong>自然看見家人的生活進度，創造不具壓迫感的日常關心契機。</li>
+                <li><strong>增加日常生活連結感：</strong>透過居家桌面螢幕呈現（小盆栽隨目標開花與顯示達成率）或燈光回饋，在分居兩地的日常中感受到彼此的陪伴。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>核心價值</span>
+          <span>兼顧「個人健康養成」與「遠距情感連結」</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 7: 需要什麼設備與系統架構 -->
+      <section class="slide" data-title="系統架構與硬體設備清單">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>06 SYSTEM &amp; HARDWARE</div>
+            <h2 class="slide-title">需要什麼設備？軟硬體整合與系統架構</h2>
+          </div>
+          <span class="slide-num-badge">07 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="arch-pipeline">
+            <div class="arch-step">
+              <div class="step-num">STEP 01 · SENSING</div>
+              <div class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12l-1.5 18a2 2 0 0 1-2 1.8h-5a2 2 0 0 1-2-1.8L6 2z"/></svg></div>
+              <h3>智慧水杯／重量感測器</h3>
+              <p>置於杯墊或水杯底座，即時偵測水杯重量變化以推算飲水量。</p>
+            </div>
+
+            <div class="arch-step">
+              <div class="step-num">STEP 02 · EDGE / IOT</div>
+              <div class="icon-badge indigo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg></div>
+              <h3>ESP32 / Arduino 微控制器</h3>
+              <p>讀取重量感測訊號、進行初步濾波處理，並透過網路傳送至雲端。</p>
+            </div>
+
+            <div class="arch-step">
+              <div class="step-num">STEP 03 · CLOUD &amp; AI</div>
+              <div class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div>
+              <h3>雲端資料庫與運算</h3>
+              <p>儲存雙方歷史資料、計算個人與共同目標進度，並供 AI Agent 分析。</p>
+            </div>
+
+            <div class="arch-step">
+              <div class="step-num">STEP 04 · AMBIENT DISPLAY</div>
+              <div class="icon-badge teal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <h3>小型螢幕／LED 實體裝置</h3>
+              <p>在雙方家中透過螢幕顯示共同小盆栽（越接近目標花朵越茂盛）與達成百分比，或輔以 LED 光影。</p>
+            </div>
+          </div>
+
+          <table class="table-clean" aria-label="設備清單與用途">
+            <thead>
+              <tr>
+                <th>設備項目</th>
+                <th>主要用途說明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>智慧水杯／重量感測器</td>
+                <td>偵測水杯置放與水位減少造成的重量變化，換算每日飲水量</td>
+              </tr>
+              <tr>
+                <td>ESP32 / Arduino</td>
+                <td>蒐集感測器數據並經由網路即時傳送至系統，同時驅動桌面螢幕畫面或 LED 燈效</td>
+              </tr>
+              <tr>
+                <td>雲端資料庫</td>
+                <td>儲存雙方長期飲水紀錄、個人目標與共同目標進度，支援跨地同步</td>
+              </tr>
+              <tr>
+                <td>小型螢幕／LED 燈等實體裝置</td>
+                <td>在雙方家中以「小盆栽成長開花＋達成百分比」或環境燈光呈現共同目標進度</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="slide-footer">
+          <span>設備架構</span>
+          <span>低成本、易部署且具高延伸性的居家 IoT 架構</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 8: 技術關鍵挑戰：如何判別喝水動作 -->
+      <section class="slide" data-title="感測關鍵挑戰：重量狀態判別">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>07 TECHNICAL CHALLENGE</div>
+            <h2 class="slide-title">感測設計關鍵：如何區分喝水、拿起水杯與裝水？</h2>
+          </div>
+          <span class="slide-num-badge">08 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="signal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <strong style="font-size:0.95rem; color:var(--text-primary);">重量感測器時序變化示意 (Weight vs. Time)</strong>
+              <span style="font-size:0.8rem; color:var(--text-muted);">避免將所有重量變化誤判為飲水</span>
+            </div>
+            <svg viewBox="0 0 820 155" width="100%" style="max-height:150px;">
+              <!-- Grid lines -->
+              <line x1="40" y1="20" x2="40" y2="130" stroke="#b8d6ee" stroke-width="1.5"/>
+              <line x1="40" y1="130" x2="800" y2="130" stroke="#b8d6ee" stroke-width="1.5"/>
+              <line x1="40" y1="65" x2="800" y2="65" stroke="#e5f1fb" stroke-dasharray="4 4"/>
+              <text x="12" y="133" font-size="11" fill="#708ba6">0g</text>
+              <text x="8" y="68" font-size="11" fill="#708ba6">W₀</text>
+
+              <!-- Event 1: Pick up & put back (no drinking) -->
+              <path d="M50 65 L95 65 L103 128 L150 128 L158 65 L235 65" fill="none" stroke="#6384d1" stroke-width="3" stroke-linejoin="round"/>
+              <rect x="85" y="16" width="90" height="22" rx="6" fill="#edf1fb"/>
+              <text x="130" y="31" text-anchor="middle" font-size="11" font-weight="600" fill="#4f6db8">① 拿起後放回</text>
+              <text x="130" y="147" text-anchor="middle" font-size="10.5" fill="#708ba6">ΔW ≈ 0 → 不計入</text>
+
+              <!-- Event 2: Drinking -->
+              <path d="M235 65 L285 65 L293 128 L345 128 L353 88 L465 88" fill="none" stroke="#4693cc" stroke-width="3.2" stroke-linejoin="round"/>
+              <line x1="235" y1="65" x2="420" y2="65" stroke="#9ac9eb" stroke-dasharray="3 3"/>
+              <line x1="395" y1="65" x2="395" y2="88" stroke="#4693cc" stroke-width="1.8"/>
+              <rect x="275" y="16" width="98" height="22" rx="6" fill="#e2f0fb"/>
+              <text x="324" y="31" text-anchor="middle" font-size="11" font-weight="600" fill="#2f74aa">② 喝水動作</text>
+              <text x="360" y="147" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2f74aa">穩定減少 ΔW &lt; 0 → 累計飲水</text>
+
+              <!-- Event 3: Refilling -->
+              <path d="M465 88 L525 88 L533 128 L595 128 L603 32 L780 32" fill="none" stroke="#49a89d" stroke-width="3.2" stroke-linejoin="round"/>
+              <rect x="525" y="10" width="94" height="22" rx="6" fill="#e7f6f4"/>
+              <text x="572" y="25" text-anchor="middle" font-size="11" font-weight="600" fill="#35857c">③ 裝水補水</text>
+              <text x="645" y="147" text-anchor="middle" font-size="10.5" font-weight="600" fill="#35857c">ΔW &gt; 0 → 更新基準重量</text>
+            </svg>
+          </div>
+
+          <div class="grid-3">
+            <div class="card">
+              <div class="icon-badge indigo" style="width:36px; height:36px; margin-bottom:8px;">①</div>
+              <h3>單純拿起水杯</h3>
+              <p>重量驟降為 0 後，放回時讀值幾乎與拿起前相同（|ΔW| 小於閾值）。系統判定為「移動/碰觸」，<strong>不計入飲水量</strong>。</p>
+            </div>
+
+            <div class="card card-tint">
+              <div class="icon-badge" style="width:36px; height:36px; margin-bottom:8px;">②</div>
+              <h3>實際喝水行為</h3>
+              <p>經歷「拿起歸零 → 放回穩態」且重量呈現合理減少（如 15g–350g 之間並維持穩定 2–3 秒），確認後<strong>累計為有效飲水量</strong>。</p>
+            </div>
+
+            <div class="card">
+              <div class="icon-badge teal" style="width:36px; height:36px; margin-bottom:8px;">③</div>
+              <h3>裝水補充動作</h3>
+              <p>放回後重量明顯增加（ΔW &gt; 0）。系統僅更新目前「水杯基準重量」，<strong>不會產生負數飲水或誤算</strong>。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>訊號處理邏輯</span>
+          <span>以狀態機（State Machine）搭配穩態濾波提升量測準確度</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 9: 相關研究 -->
+      <section class="slide" data-title="相關研究與設計啟示">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>08 RELATED WORK</div>
+            <h2 class="slide-title">相關研究基礎與系統設計啟示</h2>
+          </div>
+          <span class="slide-num-badge">09 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="grid-2" style="gap:24px;">
+            <div class="paper-card">
+              <div>
+                <span class="paper-year">2019 · Systematic Review &amp; Meta-analysis</span>
+                <div class="paper-title">
+                  Dyadic interventions to promote physical activity and reduce sedentary behaviour: systematic review and meta-analysis
+                </div>
+                <ul class="clean-list">
+                  <li><strong>研究重點：</strong>探討「雙人共同目標（Dyadic goals）」與合作型介入機制對健康行為改變的實質影響。</li>
+                  <li><strong>主要發現：</strong>雙人共同參與與互助目標有助於提升行為持續性與健康介入成效。</li>
+                </ul>
+              </div>
+              <div class="insight-tag">
+                <strong>對本系統的依據：</strong>支持將父母與子女配對為「雙人合作單元」，透過整合個人目標形成共同進度，強化健康行為動機。
+              </div>
+            </div>
+
+            <div class="paper-card">
+              <div>
+                <span class="paper-year" style="background:var(--accent-teal-bg); color:#2e7d74;">2026 · Family-Centered Health Tracking</span>
+                <div class="paper-title">
+                  FamilyBloom: Examining Ecologies of Collaboration in Family-Centered Health Tracking
+                </div>
+                <ul class="clean-list teal">
+                  <li><strong>研究重點：</strong>檢視家庭成員共同追蹤個人健康資料與目標時，在真實家庭互動生態中的合作經驗。</li>
+                  <li><strong>關鍵提醒：</strong>共同追蹤確實能創造合作與支持機會，但也可能衍生<strong>緊張關係（Tensions）</strong>，例如進度落後的壓力或被監督感。</li>
+                </ul>
+              </div>
+              <div class="insight-tag warn">
+                <strong>對本系統的設計啟示：</strong>需避免「單向檢視與責備」，故採用溫和的小盆栽開花隱喻搭配達成百分比呈現、尊重個人目標差異，並由 AI Agent 適時調整目標以降低壓力。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>文獻回顧</span>
+          <span>結合行為科學實證與家庭追蹤互動張力反思</span>
+        </div>
+      </section>
+
+      <!-- SLIDE 10: 總結與討論 -->
+      <section class="slide" data-title="總結與後續討論方向">
+        <div class="slide-header">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>09 SUMMARY &amp; NEXT STEPS</div>
+            <h2 class="slide-title">總結與後續規劃方向</h2>
+          </div>
+          <span class="slide-num-badge">10 / 10</span>
+        </div>
+
+        <div class="slide-body">
+          <div class="grid-3" style="margin-bottom:20px;">
+            <div class="card card-tint">
+              <div class="icon-badge"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <h3>感測實作驗證</h3>
+              <p>搭建 ESP32 / Arduino + 重量感測器原型，實測並最佳化「拿起、喝水、裝水」三種狀態的演算法門檻。</p>
+            </div>
+
+            <div class="card">
+              <div class="icon-badge indigo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg></div>
+              <h3>共同目標與盆栽視覺化</h3>
+              <p>設計不製造比較壓力的雙人目標整合邏輯，並規劃桌面螢幕的小盆栽開花階段與百分比呈現方式。</p>
+            </div>
+
+            <div class="card">
+              <div class="icon-badge teal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+              <h3>AI Agent 互動測試</h3>
+              <p>設計個人化建議與目標調適機制，並評估其如何促進遠距家人的正向溝通而非緊張關係。</p>
+            </div>
+          </div>
+
+          <div class="concept-hero" style="margin-bottom:0; justify-content:space-between;">
+            <div>
+              <strong style="font-size:1.08rem; color:var(--blue-700);">感謝聆聽 · 歡迎指教與討論</strong>
+              <p style="font-size:0.92rem; color:var(--text-secondary); margin-top:4px; font-weight:400;">
+                以日常飲水為起點，透過感測技術與 AI Agent，讓遠距家庭在每一天的小目標中彼此陪伴。
+              </p>
+            </div>
+            <div style="font-size:0.84rem; color:var(--blue-600); font-weight:600; white-space:nowrap; background:#fff; padding:8px 16px; border-radius:999px; border:1px solid var(--border-soft);">
+              Q &amp; A
+            </div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>提案一：結合日常生活感測與 AI Agent 的遠距家庭共同目標系統</span>
+          <span>按 G 鍵可開啟投影片總覽</span>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Floating Navigation Bar -->
+  <nav class="nav-bar" aria-label="簡報控制列">
+    <button class="nav-btn" id="prev-btn" type="button" title="上一頁 (←)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+
+    <div class="nav-dots" id="nav-dots"></div>
+
+    <button class="nav-btn" id="next-btn" type="button" title="下一頁 (→)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+
+    <div class="nav-divider"></div>
+    <span class="nav-counter" id="nav-counter">1 / 10</span>
+    <div class="nav-divider"></div>
+
+    <button class="nav-btn" id="overview-btn" type="button" title="投影片總覽 (G)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    </button>
+
+    <button class="nav-btn" id="fullscreen-btn" type="button" title="全螢幕切換 (F)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    </button>
+  </nav>
+
+  <!-- Overview Grid Modal -->
+  <div class="overview-modal" id="overview-modal" role="dialog" aria-modal="true" aria-label="投影片總覽">
+    <div class="overview-header">
+      <div>
+        <h2 style="font-size:1.35rem; color:var(--text-primary);">投影片總覽</h2>
+        <p style="font-size:0.86rem; color:var(--text-secondary);">點擊任一投影片即可快速跳轉（按 Esc 關閉）</p>
+      </div>
+      <button class="nav-btn" id="close-overview" type="button" style="background:#fff; border:1px solid var(--border-soft); width:40px; height:40px;" title="關閉總覽">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="overview-grid" id="overview-grid"></div>
+  </div>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const dotsContainer = document.getElementById('nav-dots');
+      const counter = document.getElementById('nav-counter');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const overviewBtn = document.getElementById('overview-btn');
+      const overviewModal = document.getElementById('overview-modal');
+      const overviewGrid = document.getElementById('overview-grid');
+      const closeOverviewBtn = document.getElementById('close-overview');
+      const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+      let currentIndex = 0;
+
+      // Build dots & overview grid
+      slides.forEach((slide, idx) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'nav-dot' + (idx === 0 ? ' active' : '');
+        dot.title = slide.dataset.title || `第 ${idx + 1} 頁`;
+        dot.addEventListener('click', () => goTo(idx));
+        dotsContainer.appendChild(dot);
+
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'overview-item' + (idx === 0 ? ' current' : '');
+        item.innerHTML = `
+          <div class="overview-item-num">SLIDE ${String(idx + 1).padStart(2, '0')}</div>
+          <div class="overview-item-title">${slide.dataset.title || '投影片 ' + (idx + 1)}</div>
+        `;
+        item.addEventListener('click', () => {
+          goTo(idx);
+          toggleOverview(false);
+        });
+        overviewGrid.appendChild(item);
+      });
+
+      const dots = Array.from(dotsContainer.querySelectorAll('.nav-dot'));
+      const overviewItems = Array.from(overviewGrid.querySelectorAll('.overview-item'));
+
+      function goTo(index) {
+        if (index < 0 || index >= slides.length || index === currentIndex) return;
+        slides[currentIndex].classList.remove('active');
+        dots[currentIndex].classList.remove('active');
+        overviewItems[currentIndex].classList.remove('current');
+
+        currentIndex = index;
+        slides[currentIndex].classList.add('active');
+        dots[currentIndex].classList.add('active');
+        overviewItems[currentIndex].classList.add('current');
+
+        counter.textContent = `${currentIndex + 1} / ${slides.length}`;
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === slides.length - 1;
+      }
+
+      function toggleOverview(force) {
+        const open = typeof force === 'boolean' ? force : !overviewModal.classList.contains('open');
+        overviewModal.classList.toggle('open', open);
+      }
+
+      prevBtn.addEventListener('click', () => goTo(currentIndex - 1));
+      nextBtn.addEventListener('click', () => goTo(currentIndex + 1));
+      overviewBtn.addEventListener('click', () => toggleOverview(true));
+      closeOverviewBtn.addEventListener('click', () => toggleOverview(false));
+
+      fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.();
+        } else {
+          document.exitFullscreen?.();
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        // Do not hijack arrows when dragging range inputs
+        if (e.target && e.target.tagName === 'INPUT') return;
+
+        if (overviewModal.classList.contains('open')) {
+          if (e.key === 'Escape' || e.key.toLowerCase() === 'g') {
+            toggleOverview(false);
+          }
+          return;
+        }
+
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+          e.preventDefault();
+          goTo(currentIndex + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault();
+          goTo(currentIndex - 1);
+        } else if (e.key === 'Home') {
+          goTo(0);
+        } else if (e.key === 'End') {
+          goTo(slides.length - 1);
+        } else if (e.key.toLowerCase() === 'g') {
+          toggleOverview(true);
+        } else if (e.key.toLowerCase() === 'f') {
+          fullscreenBtn.click();
+        }
+      });
+
+      // Touch swipe navigation
+      let touchStartX = null;
+      document.addEventListener('touchstart', (e) => {
+        if (e.target && e.target.tagName === 'INPUT') return;
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      document.addEventListener('touchend', (e) => {
+        if (touchStartX === null) return;
+        const diff = e.changedTouches[0].screenX - touchStartX;
+        if (Math.abs(diff) > 55) {
+          goTo(diff < 0 ? currentIndex + 1 : currentIndex - 1);
+        }
+        touchStartX = null;
+      }, { passive: true });
+
+      prevBtn.disabled = true;
+
+      // Slide 4 Interactive Hydration & Potted Plant Simulator
+      const sliderA = document.getElementById('slider-a');
+      const sliderB = document.getElementById('slider-b');
+      const aStats = document.getElementById('a-stats');
+      const bStats = document.getElementById('b-stats');
+      const aBar = document.getElementById('a-bar');
+      const bBar = document.getElementById('b-bar');
+      const sharedPct = document.getElementById('shared-pct');
+      const sharedMl = document.getElementById('shared-ml');
+      const screenMiniFill = document.getElementById('screen-mini-fill');
+      const plantStageName = document.getElementById('plant-stage-name');
+      const plantStem = document.getElementById('plant-stem');
+      const plantLeavesMid = document.getElementById('plant-leaves-mid');
+      const plantFlowersMid = document.getElementById('plant-flowers-mid');
+      const plantFlowersFull = document.getElementById('plant-flowers-full');
+      const plantSparkles = document.getElementById('plant-sparkles');
+      const ledOrb = document.getElementById('led-orb');
+      const ledStatus = document.getElementById('led-status');
+      const resetDemo = document.getElementById('reset-demo');
+
+      const GOAL_A = 1500;
+      const GOAL_B = 1800;
+
+      function setStage(el, visible, scale) {
+        if (!el) return;
+        el.style.opacity = visible ? '1' : '0';
+        el.style.transform = `scale(${visible ? scale : 0.75})`;
+      }
+
+      function updateHydrationDemo() {
+        const valA = Number(sliderA.value);
+        const valB = Number(sliderB.value);
+        const pctA = Math.min((valA / GOAL_A) * 100, 100);
+        const pctB = Math.min((valB / GOAL_B) * 100, 100);
+        const combinedPct = (pctA + pctB) / 2;
+
+        aStats.textContent = `${valA.toLocaleString()} ml · ${pctA.toFixed(1)}%`;
+        bStats.textContent = `${valB.toLocaleString()} ml · ${pctB.toFixed(1)}%`;
+        aBar.style.width = `${pctA}%`;
+        bBar.style.width = `${pctB}%`;
+
+        sharedPct.textContent = `${combinedPct.toFixed(1)}%`;
+        sharedMl.textContent = `合計 ${(valA + valB).toLocaleString()} / ${(GOAL_A + GOAL_B).toLocaleString()} ml`;
+        screenMiniFill.style.width = `${combinedPct}%`;
+
+        // Progressive potted plant growth by combined percentage
+        setStage(plantStem, combinedPct > 0, combinedPct < 25 ? 0.78 : 1);
+        setStage(plantLeavesMid, combinedPct >= 25, 1);
+        setStage(plantFlowersMid, combinedPct >= 50, 1);
+        setStage(plantFlowersFull, combinedPct >= 80, 1);
+        setStage(plantSparkles, combinedPct >= 95, 1);
+
+        if (combinedPct >= 95) {
+          plantStageName.textContent = '狀態：繁花盛開（共同目標達成！）';
+          plantStageName.style.color = '#3b968c';
+          ledOrb.style.background = '#49a89d';
+          ledOrb.style.boxShadow = '0 0 14px #49a89d';
+          ledStatus.textContent = '螢幕繁花盛開＋達成率（可搭青綠光暈）';
+        } else if (combinedPct >= 80) {
+          plantStageName.textContent = '狀態：花朵茂盛（即將達標）';
+          plantStageName.style.color = '#2f74aa';
+          ledOrb.style.background = '#4693cc';
+          ledOrb.style.boxShadow = '0 0 12px #4693cc';
+          ledStatus.textContent = '螢幕花朵茂盛＋達成率（可搭天藍光暈）';
+        } else if (combinedPct >= 50) {
+          plantStageName.textContent = '狀態：含苞初綻（穩步成長中）';
+          plantStageName.style.color = '#2f74aa';
+          ledOrb.style.background = '#56a8e0';
+          ledOrb.style.boxShadow = '0 0 12px #56a8e0';
+          ledStatus.textContent = '螢幕顯示小盆栽成長＋達成率（可輔以柔和 LED）';
+        } else if (combinedPct >= 25) {
+          plantStageName.textContent = '狀態：枝葉舒展（持續灌溉中）';
+          plantStageName.style.color = '#4a6682';
+          ledOrb.style.background = '#84bae6';
+          ledOrb.style.boxShadow = '0 0 9px #84bae6';
+          ledStatus.textContent = '螢幕枝葉萌發＋達成率（淡藍微光）';
+        } else {
+          plantStageName.textContent = '狀態：嫩芽初現（開始新的一天）';
+          plantStageName.style.color = '#708ba6';
+          ledOrb.style.background = '#b8daf4';
+          ledOrb.style.boxShadow = '0 0 6px #b8daf4';
+          ledStatus.textContent = '螢幕嫩芽初現＋達成率（柔光待機）';
+        }
+      }
+
+      sliderA.addEventListener('input', updateHydrationDemo);
+      sliderB.addEventListener('input', updateHydrationDemo);
+      resetDemo.addEventListener('click', () => {
+        sliderA.value = 900;
+        sliderB.value = 1200;
+        updateHydrationDemo();
+      });
+
+      updateHydrationDemo();
+    })();
+  </script>
+</body>
+</html>
